@@ -18,6 +18,6 @@
 #  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 #  SOFTWARE.
 
-__version__ = "0.2.dev0"
+__version__ = "0.3.0"
 
 from koinlyxp.exporter import run

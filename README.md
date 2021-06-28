@@ -18,12 +18,12 @@ transaction information from [koinly.io](https://koinly.io) for offline back-up 
     ```
 
 ## Usage:
-- Log into your [koinly.io](http://koinly.io) account and obtain the authorization token
+- Log into your [koinly.io](http://koinly.io) account and obtain the browser user agent and authorization token
   received from the server using the browser Developer Tools. Look for the x-auth-token header sent
   in HTTP requests or the data returned in the /api/sessions response body.
-- Run koinlyxp with your authorization token. For example:
+- Run koinlyxp with your authorization token and user agent. For example:
     ```
-    koinlyxp Pewi83249r23DSrgfw92934re32-dsfk3UWr
+    koinlyxp Pewi83249r23DSrgfw92934re32-dsfk3UWr "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.114 Safari/537.36"
     ```
 - Human-readable CSV files and raw JSON data fetched from koinly will be saved in a timestamped
   output directory:

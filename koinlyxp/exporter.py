@@ -54,6 +54,11 @@ def get_args() -> argparse.Namespace:
         metavar="AUTH-TOKEN",
         action="store",
         help="the koinly.io authorization token received after logging into the site")
+    arg_parser.add_argument(
+        "user_agent",
+        metavar="USER-AGENT",
+        action="store",
+        help="the user agent string of the browser used to log into the site")
     return arg_parser.parse_args()
 
 
@@ -160,6 +165,7 @@ def run():
 
     http_session = requests.session()
     http_session.headers["x-auth-token"] = args.auth_token
+    http_session.headers["user-agent"] = args.user_agent
 
     user_info = get_user_info(http_session)
     transactions = get_list("transactions", http_session, f"{BASE_API_URL}/transactions", {"order": "date"})

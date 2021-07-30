@@ -40,6 +40,7 @@ BASE_API_URL = "https://api.koinly.io/api"
 
 @dataclass
 class UserInfo:
+    portfolio_id: str
     base_currency: str
     base_currency_usd_rate: Decimal
     timezone: DstTzInfo
@@ -64,9 +65,13 @@ def get_args() -> argparse.Namespace:
 
 def get_user_info(http_session: Session) -> UserInfo:
     rsp_body = http_session.get(f"{BASE_API_URL}/sessions").json()
-    user = rsp_body.get("user")
-    if isinstance(user, dict):
-        currency_info = user.get("base_currency")
+    portfolios = rsp_body.get("portfolios")
+    if isinstance(portfolios, list) and len(portfolios) > 0:
+        portfolio = portfolios[0]
+        portfolio_id = portfolio.get("id")
+        if not isinstance(portfolio_id, str):
+            raise Exception("No portfolio ID found for user")
+        currency_info = portfolio.get("base_currency")
         if not isinstance(currency_info, dict):
             raise Exception("No base currency information found for user")
         base_currency = currency_info.get("symbol")
@@ -75,10 +80,11 @@ def get_user_info(http_session: Session) -> UserInfo:
         base_currency_usd_rate = currency_info.get("usd_rate")
         if not isinstance(base_currency_usd_rate, str):
             raise Exception("No base currency USD rate information found for user")
-        timezone_name = user.get("timezone")
+        timezone_name = portfolio.get("timezone")
         if not isinstance(timezone_name, str):
             raise Exception("No timezone information found for user")
         return UserInfo(
+            portfolio_id=portfolio_id,
             base_currency=base_currency,
             base_currency_usd_rate=Decimal(base_currency_usd_rate),
             timezone=pytz.timezone(timezone_name))
@@ -122,22 +128,22 @@ def get_list(
     return data
 
 
-def get_asset_accounts(assets: list[dict], http_session: Session) -> dict:
-    asset_accounts: dict[str, list[dict]] = {}
+def get_asset_ledgers(assets: list[dict], http_session: Session) -> dict:
+    asset_ledgers: dict[str, list[dict]] = {}
     for asset in assets:
         currency_info = asset.get("currency")
         if isinstance(currency_info, dict):
             id = currency_info.get("id")
             symbol = currency_info.get("symbol")
             if isinstance(id, int) and isinstance(symbol, str):
-                asset_accounts[symbol] = \
+                asset_ledgers[symbol] = \
                     get_list(
-                        "accounts",
+                        "ledgers",
                         http_session,
-                        f"{BASE_API_URL}/accounts",
+                        f"{BASE_API_URL}/ledgers",
                         {"per_page": 50, "q[currency_id_eq]": id},
                         f"{symbol} accounts")
-    return asset_accounts
+    return asset_ledgers
 
 
 def get_tax_reports(dt_now: datetime, http_session: Session) -> dict[int, dict]:
@@ -168,9 +174,11 @@ def run():
     http_session.headers["user-agent"] = args.user_agent
 
     user_info = get_user_info(http_session)
+    http_session.headers["x-portfolio-token"] = user_info.portfolio_id
+
     transactions = get_list("transactions", http_session, f"{BASE_API_URL}/transactions", {"order": "date"})
     assets = get_list("assets", http_session, f"{BASE_API_URL}/assets")
-    asset_accounts = get_asset_accounts(assets, http_session)
+    asset_ledgers = get_asset_ledgers(assets, http_session)
     tax_reports = get_tax_reports(dt_now, http_session)
     current_year_stats = get_stats(dt_year_start, dt_year_end, user_info, http_session)
 
@@ -182,8 +190,8 @@ def run():
         f.write(json.dumps(transactions, indent=4))
     with open(f"{output_dir}/assets.json", "w") as f:
         f.write(json.dumps(assets, indent=4))
-    with open(f"{output_dir}/asset_accounts.json", "w") as f:
-        f.write(json.dumps(asset_accounts, indent=4))
+    with open(f"{output_dir}/asset_ledgers.json", "w") as f:
+        f.write(json.dumps(asset_ledgers, indent=4))
     for year, tax_report in tax_reports.items():
         with open(f"{output_dir}/tax_report_{year}.json", "w") as f:
             f.write(json.dumps(tax_report, indent=4))
